@@ -184,37 +184,27 @@
       v_seps_length integer;
       v_seps_diff integer;
   BEGIN
-      p_seps := 'cfhistuCFHISTU';
-      -- p_alphabet := string_agg(distinct chars.split_chars, '') from (select unnest(regexp_split_to_array(p_alphabet, '')) as split_chars) as chars;
-      -- this also doesn't preserve the order of alphabet, but it doesn't appear to matter, never mind on that
-      p_alphabet := hashids.distinct_alphabet(p_alphabet);
+    p_seps := 'cfhistuCFHISTU';
+    p_alphabet := hashids.distinct_alphabet(p_alphabet);
 
+    if length(p_alphabet) < 16 then
+        RAISE EXCEPTION 'alphabet must contain 16 unique characters, it is: %', length(p_alphabet) USING HINT = 'Please check your alphabet';
+    end if;
 
-      if length(p_alphabet) < 16 then
-          RAISE EXCEPTION 'alphabet must contain 16 unique characters, it is: %', length(p_alphabet) USING HINT = 'Please check your alphabet';
-      end if;
+    p_seps := hashids.clean_seps_from_alphabet(p_seps, p_alphabet);
 
-      -- seps should only contain character present in the passed alphabet
-      -- p_seps := array_to_string(ARRAY(select chars.cha from (select unnest(regexp_split_to_array(p_seps, '')) as cha intersect select unnest(regexp_split_to_array(p_alphabet, '')) as cha ) as chars order by ascii(cha) desc), '');
-      -- this doesn't preserve the input order, which is bad
-      p_seps := hashids.clean_seps_from_alphabet(p_seps, p_alphabet);
-
-      -- alphabet should not contain seps.
-      -- p_alphabet := array_to_string(ARRAY( select chars.cha from (select unnest(regexp_split_to_array(p_alphabet, '')) as cha EXCEPT select unnest(regexp_split_to_array(p_seps, '')) as cha) as chars  ), '');
-      -- this also doesn't prevserve the order
-      p_alphabet := hashids.clean_alphabet_from_seps(p_seps, p_alphabet);
-
+    p_alphabet := hashids.clean_alphabet_from_seps(p_seps, p_alphabet);    
 
     p_seps := hashids.consistent_shuffle(p_seps, p_salt);
 
-    if (length(p_seps) = 0) or ((length(p_alphabet) / length(p_seps)) > v_sep_div) then
-      v_seps_length := cast( ceil( length(p_alphabet)/v_sep_div ) as integer);
+    if (length(p_seps) = 0) or ((cast(length(p_alphabet) as decimal) / length(p_seps)) > v_sep_div) then
+      v_seps_length := cast( ceil( length(p_alphabet)/ cast(v_sep_div as decimal) ) as integer);
       if v_seps_length = 1 then 
         v_seps_length := 2; 
       end if;
       if v_seps_length > length(p_seps) then
         v_seps_diff := v_seps_length - length(p_seps);
-        p_seps := SUBSTRING(p_alphabet, 1, v_seps_diff);
+        p_seps := p_seps || SUBSTRING(p_alphabet, 1, v_seps_diff);
         p_alphabet := SUBSTRING(p_alphabet, v_seps_diff + 1);
       else 
         p_seps := SUBSTRING(p_seps, 1, v_seps_length + 1);
@@ -222,7 +212,6 @@
     end if;
 
     p_alphabet := hashids.consistent_shuffle(p_alphabet, p_salt);
-
     v_guard_count := cast(ceil(length(p_alphabet) / v_guard_div ) as integer);
 
     if length(p_alphabet) < 3 then
@@ -232,7 +221,11 @@
       p_guards := SUBSTRING(p_alphabet, 1, v_guard_count);
       p_alphabet := SUBSTRING(p_alphabet, v_guard_count + 1);
     end if;
-    
+
+    -- raise notice 'p_alphabet %', p_alphabet;
+    -- raise notice 'p_seps %', p_seps;
+    -- p_alphabet := 'QG4RDEMY9PNWXB7583V1Z6K';
+    -- p_seps := 'FSITUCHA';
   END;
   $$
     LANGUAGE plpgsql IMMUTABLE
