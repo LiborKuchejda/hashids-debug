@@ -2,7 +2,7 @@
   -- 0_create_hashids_schema
   -------------------------------------------
 
-  CREATE SCHEMA hashids;
+  -- CREATE SCHEMA hashids;
 
   -------------------------------------------
   -- 1_create_hashids_constent_shuffle.sql
@@ -724,4 +724,4 @@
     LANGUAGE plpgsql IMMUTABLE
     COST 300;
 
-  GRANT USAGE ON SCHEMA hashids to public;
+  -- GRANT USAGE ON SCHEMA hashids to public;
