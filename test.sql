@@ -35,3 +35,7 @@ CREATE OR REPLACE FUNCTION public.encode_public_id(p_id integer, p_organisation_
 -- Original psql        REu9
 
   SELECT encode_public_id(4,3);
+
+  SELECT encode_public_id(NULL);
+
+  SELECT hashids.hash(5,'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890');

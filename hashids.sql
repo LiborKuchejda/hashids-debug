@@ -249,8 +249,9 @@
       v_alphabet_length integer := length($2);
       v_pos integer;
   BEGIN
-
+      IF (p_input is NULL) THEN RETURN NULL; END IF;
       WHILE 1 = 1 LOOP
+          
           v_pos := (p_input % v_alphabet_length) + p_zero_offset; -- have to add one, because SUBSTRING in SQL starts at 1 instead of 0 (like it does in other languages)
           --raise notice '% mod % == %', p_input, v_alphabet_length, v_pos;
           --raise notice 'SUBSTRING(%, %, 1): %', p_alphabet, v_pos, (SUBSTRING(p_alphabet, v_pos, 1));
@@ -317,7 +318,7 @@
     RETURNS text AS
   $$
       DECLARE
-          p_numbers ALIAS for $1;
+          p_numbers bigint[] := array_remove($1, NULL);
           p_salt ALIAS for $2;
           p_min_hash_length ALIAS for $3;
           p_alphabet ALIAS for $4;
@@ -344,10 +345,11 @@
           v_excess int;
   BEGIN
 
+      IF (array_length(p_numbers,1) is NULL) THEN 
+        RETURN NULL; 
+      END IF;
+
       select * from hashids.setup_alphabet(p_salt, p_alphabet) into v_alphabet, v_seps, v_guards;
-      --raise notice 'v_seps: %', v_seps;
-      --raise notice 'v_alphabet: %', v_alphabet;
-      --raise notice 'v_guards: %', v_guards;
 
       -- Calculate numbersHashInt
       for v_lastId in 1..v_count LOOP
@@ -363,13 +365,10 @@
       v_id := 0;
       for v_i in 1..v_count LOOP
           v_number := p_numbers[v_i];
-          raise notice '%[%]: % for %', p_numbers, v_i, v_number, v_count;
-
           v_buffer := v_lottery || p_salt || v_alphabet;
           v_alphabet := hashids.consistent_shuffle(v_alphabet, SUBSTRING(v_buffer, 1, length(v_alphabet)));
           v_last := hashids.hash(v_number, v_alphabet, cast(p_zero_offset as boolean));
           v_ret := v_ret || v_last;
-          --raise notice 'v_ret: %', v_ret;
           --raise notice '(v_i < v_count: % < % == %', v_i, v_count, (v_i < v_count);
           IF (v_i) < v_count THEN
               --raise notice 'v_sepsIndex:  % mod (% + %) == %', v_number, ascii(SUBSTRING(v_last, 1, 1)), v_i, (v_number % (ascii(SUBSTRING(v_last, 1, 1)) + v_i));
